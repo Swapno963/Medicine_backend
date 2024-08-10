@@ -19,8 +19,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    // cb(null, file.fieldname + "-" + uniqueSuffix);
-    cb(null, uniqueSuffix + "+" + file.originalname);
+    cb(null, file.originalname);
+    // cb(null, uniqueSuffix + "+" + file.originalname);
   },
 });
 
@@ -47,34 +47,39 @@ router.post("/register", upload.single("file"), async (req, res) => {
   try {
     const { username, password, email } = req.body;
     // const photoUrl = req.body.file ? `/uploads/${req.body.file.filename}` : ""; //URL to access the  photo
-
+    let photoUrl = req.file.originalname;
     console.log(req.body, "\n file is :", req.file);
 
-    // let user = await User.findOne({ email });
-    // if (user) return res.status(400).json({ message: "User already exists" });
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ message: "User already exists" });
 
-    // const verificationCode = crypto.randomInt(100000, 999999).toString();
-    // user = new User({
-    //   username,
-    //   email,
-    //   password,
-    //   photoUrl,
-    //   verificationCode,
-    //   verificationCodeExpires: Date.now() + 60000,
-    // }); // 1 min
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
+    user = new User({
+      username,
+      email,
+      password,
+      photoUrl,
+      verificationCode,
+      verificationCodeExpires: Date.now() + 60000,
+    }); // 1 min
+    console.log(user);
+
     const salt = await bcrypt.genSalt(10);
-    // user.password = await bcrypt.hash(password, salt);
-    // await user.save();
+    user.password = await bcrypt.hash(password, salt);
+    await user.save();
 
     // email send
-    // await sendVerificationEmail(user, verificationCode);
+    const codeSend = await sendVerificationEmail(email, verificationCode);
+    console.log(codeSend);
 
-    // const accessToken = generateAccessToken(user);
-    // const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    // res.status(201).json({ accessToken, refreshToken });
-    res.status(201).json({ accessToken: "a", refreshToken: "r" });
+    res.status(201).json({ accessToken, refreshToken });
+    // res.status(201).json({ accessToken: "a", refreshToken: "r" });
   } catch (err) {
+    console.log(err);
+
     res.status(500).json({ error: err.message });
   }
 });
@@ -82,12 +87,16 @@ router.post("/register", upload.single("file"), async (req, res) => {
 // verify email
 router.post("/verify-email", async (req, res) => {
   const { email, verificationCode } = req.body;
+  console.log(email, verificationCode);
+  // console.log(req.body);
 
   try {
     const user = await User.findOne({ email });
+    console.log(user);
+
     if (!user) return res.status(400).json({ message: "User not found" });
 
-    if (user.verificationCode !== verificationCode) {
+    if (parseInt(user.verificationCode) !== parseInt(verificationCode)) {
       return res.status(400).json({ message: "Invalid verification code" });
     }
 
@@ -99,10 +108,13 @@ router.post("/verify-email", async (req, res) => {
     user.isVerified = true;
     user.verificationCode = undefined;
     user.verificationCodeExpires = undefined;
-    await user.save();
+    let saveing = await user.save();
+    console.log(saveing);
 
     res.status(200).json({ message: "Email verified successfully!" });
   } catch (err) {
+    console.log(err);
+
     res.status(500).json({ error: err.message });
   }
 });
