@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const multer = require("multer");
+
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
@@ -13,12 +14,13 @@ const router = express.Router();
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, process.env.UPLOADS_DIR); // Directory where photos will be stored
+  destination: function (req, file, cb) {
+    cb(null, "uploads");
   },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + ext); // Append timestamp to avoid file name conflicts
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    // cb(null, file.fieldname + "-" + uniqueSuffix);
+    cb(null, uniqueSuffix + "+" + file.originalname);
   },
 });
 
@@ -41,10 +43,10 @@ const generateRefreshToken = (user) => {
 };
 
 // Register new user
-router.post("/register", async (req, res) => {
+router.post("/register", upload.single("file"), async (req, res) => {
   try {
     const { username, password, email } = req.body;
-    // const photoUrl = req.file ? `/uploads/${req.file.filename}` : ""; //URL to access the  photo
+    // const photoUrl = req.body.file ? `/uploads/${req.body.file.filename}` : ""; //URL to access the  photo
 
     console.log(req.body, "\n file is :", req.file);
 
