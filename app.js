@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const path = require("path");
 const mongoose = require("mongoose");
 const authRoutes = require("./routes/auth");
 
@@ -7,6 +8,8 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+
+// app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // Routes
 app.use("/api/auth", authRoutes);
